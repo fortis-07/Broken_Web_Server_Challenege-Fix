@@ -3,7 +3,7 @@
 ## **Problem Analysis & Fixes**
 This document outlines the key issues that were preventing the webpage from loading through the Application Load Balancer (ALB) and how they were resolved.
 
----
+
 
 ### **1. ALB Deployed in Private Subnets (Problem 1)**
 #### **Issue**  
@@ -29,7 +29,7 @@ The ALB was initially configured in **private subnets**, making it inaccessible 
 ]
 ```
 
----
+
 
 ### **2. Target Group Not Associated with Auto Scaling Group (Problem 2)**
 #### **Issue**  
@@ -63,7 +63,7 @@ The Auto Scaling Group (ASG) was launching instances, but they were **not regist
 }
 ```
 
----
+
 
 ### **3. Incorrect Health Check Path (Problem 3)**
 #### **Issue**  
@@ -82,7 +82,6 @@ The ALB’s target group had a **typo** in the health check path (`/healthcheck.
 "HealthCheckPath": "/healthcheck.html"
 ```
 
----
 
 ### **4. Security Group Misconfiguration (Problem 4)**
 #### **Issue**  
@@ -129,7 +128,7 @@ The ALB’s target group had a **typo** in the health check path (`/healthcheck.
 }
 ```
 
----
+
 
 ## **Deployment Steps**
 ### **1. Creating the Stack**
@@ -138,29 +137,31 @@ Use the AWS CLI or AWS Console to deploy the CloudFormation template.
 #### **AWS CLI Command**
 ```bash
 aws cloudformation create-stack \
-  --stack-name WebAppStack \
-  --template-body file://template.json \
+  --stack-name owoseniStack \
+  --template-body file://owoseni_stack.yml \
   --parameters ParameterKey=InstanceCount,ParameterValue=2 \
   --capabilities CAPABILITY_IAM
 ```
+![image](https://github.com/user-attachments/assets/69b33fc9-3c5b-4461-ae8e-1d74d529940c)
 
-#### **AWS Console**
-1. Go to **AWS CloudFormation**.
-2. Click **Create Stack** > **With new resources**.
-3. Upload the template file (`template.json`).
-4. Enter stack name (`WebAppStack`).
-5. Set parameters (e.g., `InstanceCount=2`).
-6. Acknowledge IAM capabilities.
-7. Click **Create Stack**.
+### **2. Verify stack Deployment**
+Run this to see if the stack deployed successfully:
 
----
+```bash
+aws cloudformation describe-stacks --stack-name Owoseni-stack --query "Stacks[0].StackStatus"
+```
 
-### **2. Getting Stack Details**
+Expected final status: ```CREATE_COMPLETE```
+
+![image](https://github.com/user-attachments/assets/a9d3e8d1-dcce-494a-bbbd-c2292ba2ee95)
+
+
+### **3. Getting Stack Details**
 After deployment, check the stack status and outputs.
 
 #### **AWS CLI Command**
 ```bash
-aws cloudformation describe-stacks --stack-name WebAppStack
+aws cloudformation describe-stacks --stack-name owoseniStack
 ```
 
 #### **Expected Output**
@@ -180,38 +181,28 @@ aws cloudformation describe-stacks --stack-name WebAppStack
 }
 ```
 
----
+![image](https://github.com/user-attachments/assets/a9d901c8-676c-4240-936c-7512bb54ae15)
 
-### **3. Accessing the Webpage via ALB**
+
+### **4. Accessing the Webpage via ALB**
 Once the stack is in `CREATE_COMPLETE` status, the webpage can be accessed via the ALB’s DNS name.
 
 #### **URL Format**
 ```
-http://<ALB-DNS-Name>
+[http://<ALB-DNS-Name>](http://owosen-appli-fwyjx9mbfae4-748553299.us-east-1.elb.amazonaws.com/)
 ```
 
-#### **Example**
-```
-http://webapp-alb-1234567890.us-east-1.elb.amazonaws.com
-```
 
----
 
 ## **Verification Steps**
-1. **Check ALB Health**  
-   - Go to **EC2 > Target Groups** and verify instances are **healthy**.
    
-2. **Test Web Access**  
+1. **Test Web Access**  
    - Open the ALB URL in a browser.
    - If it loads, the fixes were successful.
 
-3. **Troubleshooting**  
-   - If the page doesn’t load:
-     - Check **Security Groups** (ALB and EC2).
-     - Verify **Target Group Health**.
-     - Check **CloudWatch Logs** for errors.
+![image](https://github.com/user-attachments/assets/c2781181-12e8-4cf8-b1b3-f57304ad1277)
 
----
+
 
 ## **Conclusion**
 By fixing the **subnet placement, target group association, health check path, and security group rules**, the ALB can now properly route traffic to the instances, allowing the webpage to load successfully.  
