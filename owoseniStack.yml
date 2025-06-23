@@ -1,0 +1,427 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "InstanceType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": ["t2.micro", "t2.small", "t2.medium"]
+    },
+    "InstanceCount": {
+      "Description": "Number of EC2 instances to launch",
+      "Type": "Number",
+      "Default": "2"
+    }
+  },
+  "Resources": {
+    "Staging": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Staging"
+          }
+        ]
+      }
+    },
+    "PublicSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/24",
+        "AvailabilityZone": "us-east-1a",
+        "MapPublicIpOnLaunch": true,
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "public-10.0.0.0-us-east-1a"
+          }
+        ]
+      }
+    },
+    "PublicSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.2.0/24",
+        "AvailabilityZone": "us-east-1b",
+        "MapPublicIpOnLaunch": true,
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "public-10.0.2.0-us-east-1b"
+          }
+        ]
+      }
+    },
+    "PrivateSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": "us-east-1a",
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "private-10.0.1.0-us-east-1a"
+          }
+        ]
+      }
+    },
+    "PrivateSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.3.0/24",
+        "AvailabilityZone": "us-east-1b",
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "private-10.0.3.0-us-east-1b"
+          }
+        ]
+      }
+    },
+    "IGW": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "igw"
+          }
+        ]
+      }
+    },
+    "GatewayToInternet": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "InternetGatewayId": {
+          "Ref": "IGW"
+        }
+      }
+    },
+    "PublicRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "public-rt"
+          }
+        ]
+      }
+    },
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "GatewayToInternet",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "IGW"
+        }
+      }
+    },
+    "PublicSubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        }
+      }
+    },
+    "PublicSubnetRouteTableAssociation2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet2"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        }
+      }
+    },
+    "PrivateRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Staging"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "private-rt"
+          }
+        ]
+      }
+    },
+    "PrivateSubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PrivateSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
+    "PrivateSubnetRouteTableAssociation2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PrivateSubnet2"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
+    "LaunchTemplate": {
+      "Type": "AWS::EC2::LaunchTemplate",
+      "Properties": {
+        "LaunchTemplateData": {
+          "ImageId": "ami-0440d3b780d96b29d",
+          "InstanceType": { "Ref": "InstanceType" },
+          "IamInstanceProfile": {
+            "Name": { "Ref": "AmazonS3FullAccessInstanceProfile" }
+          },
+          "SecurityGroupIds": [{ "Ref": "WebSG" }],
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Join": [
+                "",
+                [
+                  "#!/bin/bash\n",
+                  "yum update -y\n",
+                  "yum install -y httpd\n",
+                  "systemctl start httpd\n",
+                  "systemctl enable httpd\n",
+                  "cd /var/www/html\n",
+                  "aws s3 cp s3://dct-cf-website/index.html ./\n",
+                  "aws s3 cp s3://dct-cf-website/website.css ./\n",
+                  "cp index.html index.txt\n",
+                  "rm -rf index.html\n",
+                  "TOKEN=$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\")\n",
+                  "EC2AZ=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone -H \"X-aws-ec2-metadata-token: $TOKEN\")\n",
+                  "sed \"s/AZID/$EC2AZ/\" /var/www/html/index.txt > /var/www/html/index.html\n",
+                  "touch /var/www/html/healthcheck.html"
+                ]
+              ]
+            }
+          }
+        }
+      }
+    },
+    "AmazonS3FullAccessInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "AmazonS3FullAccessRole"
+          }
+        ]
+      }
+    },
+    "AmazonS3FullAccessRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["ec2.amazonaws.com"]
+              },
+              "Action": ["sts:AssumeRole"]
+            }
+          ]
+        },
+        "Path": "/"
+      }
+    },
+    "AmazonS3FullAccessPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "AmazonS3FullAccessPolicy",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": ["s3:*", "s3-object-lambda:*"],
+              "Resource": "*"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "AmazonS3FullAccessRole"
+          }
+        ]
+      }
+    },
+    "AutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "VPCZoneIdentifier": [
+          { "Ref": "PublicSubnet" },
+          { "Ref": "PublicSubnet2" }
+        ],
+        "LaunchTemplate": {
+          "LaunchTemplateId": { "Ref": "LaunchTemplate" },
+          "Version": "1"
+        },
+        "TargetGroupARNs": [
+          { "Ref": "ALBTargetGroup" }
+        ],
+        "MinSize": "2",
+        "MaxSize": "5",
+        "DesiredCapacity": { "Ref": "InstanceCount" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "autoscalinginstances",
+            "PropagateAtLaunch": "true"
+          }
+        ]
+      }
+    },
+    "ApplicationLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "DependsOn": "IGW",
+      "Properties": {
+        "Subnets": [
+          { "Ref": "PublicSubnet" },
+          { "Ref": "PublicSubnet2" }
+        ],
+        "SecurityGroups": [
+          { "Ref": "LoadBalancerSecurityGroup" }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "web-alb"
+          }
+        ]
+      }
+    },
+    "ALBListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": { "Ref": "ALBTargetGroup" }
+          }
+        ],
+        "LoadBalancerArn": { "Ref": "ApplicationLoadBalancer" },
+        "Port": 80,
+        "Protocol": "HTTP"
+      }
+    },
+    "ALBTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckTimeoutSeconds": 25,
+        "HealthyThresholdCount": 2,
+        "HealthCheckPath": "/healthcheck.html",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "UnhealthyThresholdCount": 5,
+        "VpcId": { "Ref": "Staging" },
+        "TargetType": "instance"
+      }
+    },
+    "LoadBalancerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable HTTP access on port 80",
+        "VpcId": { "Ref": "Staging" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "albsg"
+          }
+        ]
+      }
+    },
+    "WebSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow HTTP Traffic from ALB and SSH access",
+        "VpcId": { "Ref": "Staging" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "SourceSecurityGroupId": { "Ref": "LoadBalancerSecurityGroup" }
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "websg"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ALBDNSName": {
+      "Description": "DNS name of the Application Load Balancer",
+      "Value": {
+        "Fn::GetAtt": ["ApplicationLoadBalancer", "DNSName"]
+      }
+    }
+  }
+}
